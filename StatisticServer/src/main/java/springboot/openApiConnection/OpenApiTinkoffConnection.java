@@ -11,19 +11,18 @@ import ru.tinkoff.invest.openapi.model.rest.Portfolio;
 import ru.tinkoff.invest.openapi.model.rest.UserAccount;
 
 import java.time.OffsetDateTime;
-import java.util.concurrent.CompletableFuture;
 
 
 @Component
 @Scope("prototype")
-public class OpenApiConnection implements AutoCloseable{
+public class OpenApiTinkoffConnection implements AutoCloseable{
 
-    Logger logger = LoggerFactory.getLogger(OpenApiConnection.class);
+    Logger logger = LoggerFactory.getLogger(OpenApiTinkoffConnection.class);
 
     private final OpenApi openApi;
 
     @Autowired
-    public OpenApiConnection(OpenApi openApi){
+    public OpenApiTinkoffConnection(OpenApi openApi){
         this.openApi = openApi;
     }
 

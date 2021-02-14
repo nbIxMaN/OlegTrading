@@ -14,6 +14,7 @@ import java.time.Duration;
 @Configuration
 @ComponentScan(basePackages = "springboot")
 @PropertySource("classpath:tokens.properties")
+@PropertySource("classpath:config.properties")
 public class SpringConfiguration {
 
     @Value("${tinkoff.token}")

@@ -5,7 +5,7 @@ import org.springframework.stereotype.Component;
 import ru.tinkoff.invest.openapi.model.rest.Operation;
 import ru.tinkoff.invest.openapi.model.rest.OperationStatus;
 import ru.tinkoff.invest.openapi.model.rest.OperationTypeWithCommission;
-import springboot.openApiConnection.OpenApiConnection;
+import springboot.openApiConnection.OpenApiTinkoffConnection;
 
 import java.time.OffsetDateTime;
 import java.util.List;
@@ -14,15 +14,15 @@ import java.util.stream.Collectors;
 @Component
 public class ProfitCalculator {
 
-    OpenApiConnection openApiConnection;
+    OpenApiTinkoffConnection openApiTinkoffConnection;
 
     @Autowired
-    public ProfitCalculator(OpenApiConnection openApiConnection) {
-        this.openApiConnection = openApiConnection;
+    public ProfitCalculator(OpenApiTinkoffConnection openApiTinkoffConnection) {
+        this.openApiTinkoffConnection = openApiTinkoffConnection;
     }
 
     public List<Operation> calculateProfit(OffsetDateTime begin, OffsetDateTime end) {
-        List<Operation> tradingOperations = openApiConnection.getOperations(begin, end).
+        List<Operation> tradingOperations = openApiTinkoffConnection.getOperations(begin, end).
                 getOperations().
                 stream().
                 filter(this::isTradingOperation).
