@@ -7,9 +7,11 @@ import org.springframework.context.annotation.Scope;
 import org.springframework.stereotype.Component;
 import ru.tinkoff.invest.openapi.OpenApi;
 import ru.tinkoff.invest.openapi.model.rest.Operations;
+import ru.tinkoff.invest.openapi.model.rest.Portfolio;
 import ru.tinkoff.invest.openapi.model.rest.UserAccount;
 
 import java.time.OffsetDateTime;
+import java.util.concurrent.CompletableFuture;
 
 
 @Component
@@ -27,12 +29,19 @@ public class OpenApiConnection implements AutoCloseable{
 
     public Operations getOperations(OffsetDateTime begin, OffsetDateTime end) {
         UserAccount accounts = openApi.getUserContext().getAccounts().join().getAccounts().get(0);
-        return openApi.getOperationsContext().getOperations(
+        Operations operations = openApi.getOperationsContext().getOperations(
                 begin,
                 end,
                 null,
                 accounts.getBrokerAccountId()
         ).join();
+        return operations;
+    }
+
+    public Portfolio getPortfolio() {
+        UserAccount accounts = openApi.getUserContext().getAccounts().join().getAccounts().get(0);
+        Portfolio portfolio = openApi.getPortfolioContext().getPortfolio(accounts.getBrokerAccountId()).join();
+        return portfolio;
     }
 
     @Override

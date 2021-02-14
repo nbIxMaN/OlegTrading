@@ -4,10 +4,12 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.boot.SpringApplication;
 import org.springframework.boot.autoconfigure.SpringBootApplication;
+import org.springframework.context.annotation.Import;
 import org.springframework.context.annotation.ImportResource;
+import springboot.configuration.SpringConfiguration;
 
 @SpringBootApplication
-@ImportResource("classpath:statistic-context.xml")
+@Import({SpringConfiguration.class})
 public class Token {
 
     Logger logger = LoggerFactory.getLogger(Token.class);
