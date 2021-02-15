@@ -1,4 +1,4 @@
-package springboot.openApi.figi.classes;
+package springboot.openApiConnection.classes;
 
 /* Figi class */
 
@@ -7,7 +7,7 @@ import lombok.ToString;
 
 @Data
 @ToString
-public class Figi {
+public class FullInstrumentDescription {
     private String figi;
     private String securityType;
     private String marketSector;

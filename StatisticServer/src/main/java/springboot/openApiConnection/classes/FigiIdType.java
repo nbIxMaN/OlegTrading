@@ -1,4 +1,4 @@
-package springboot.openApi.figi.classes;
+package springboot.openApiConnection.classes;
 
 public enum FigiIdType {
     /**

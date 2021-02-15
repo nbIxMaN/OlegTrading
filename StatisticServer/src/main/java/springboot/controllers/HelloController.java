@@ -1,16 +1,16 @@
 package springboot.controllers;
 
-import okhttp3.Response;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 import org.springframework.web.bind.annotation.RequestMapping;
 import ru.tinkoff.invest.openapi.model.rest.Operation;
 import ru.tinkoff.invest.openapi.model.rest.Operations;
 import ru.tinkoff.invest.openapi.model.rest.Portfolio;
+import springboot.logic.FigiToFullInstrumentDescriptionResolver;
 import springboot.logic.ProfitCalculator;
-import springboot.openApi.figi.classes.Figi;
-import springboot.openApi.figi.classes.FigiIdType;
-import springboot.openApi.figi.classes.Job;
+import springboot.openApiConnection.classes.FullInstrumentDescription;
+import springboot.openApiConnection.classes.FigiIdType;
+import springboot.openApiConnection.classes.Job;
 import springboot.openApiConnection.OpenApiFigiConnection;
 import springboot.openApiConnection.OpenApiTinkoffConnection;
 
@@ -18,6 +18,7 @@ import java.io.IOException;
 import java.time.OffsetDateTime;
 import java.util.Collections;
 import java.util.List;
+import java.util.concurrent.ExecutionException;
 
 @RestController
 public class HelloController {
@@ -25,13 +26,16 @@ public class HelloController {
     OpenApiTinkoffConnection openApiTinkoffConnection;
     ProfitCalculator profitCalculator;
     OpenApiFigiConnection openApiFigiConnection;
+    FigiToFullInstrumentDescriptionResolver figiToFullInstrumentDescriptionResolver;
 
     public HelloController(OpenApiTinkoffConnection openApiTinkoffConnection,
                            ProfitCalculator profitCalculator,
-                           OpenApiFigiConnection openApiFigiConnection){
+                           OpenApiFigiConnection openApiFigiConnection,
+                           FigiToFullInstrumentDescriptionResolver figiToFullInstrumentDescriptionResolver){
         this.openApiTinkoffConnection = openApiTinkoffConnection;
         this.profitCalculator = profitCalculator;
         this.openApiFigiConnection = openApiFigiConnection;
+        this.figiToFullInstrumentDescriptionResolver = figiToFullInstrumentDescriptionResolver;
     }
 
     @RequestMapping("/operations")
@@ -56,11 +60,8 @@ public class HelloController {
     }
 
     @RequestMapping("/figi")
-    public List<Figi> figi() throws IOException {
-        return openApiFigiConnection.mapJobs(Collections.singletonList(Job.builder().
-                idType(FigiIdType.ID_BB_GLOBAL).
-                idValue("BBG000BR2B91").
-                build())).join();
+    public List<FullInstrumentDescription> figi() {
+        return figiToFullInstrumentDescriptionResolver.getFullInstrumentDescriptionsByFigi(Collections.singletonList("BBG000BR2B91")).join();
     }
 
 }

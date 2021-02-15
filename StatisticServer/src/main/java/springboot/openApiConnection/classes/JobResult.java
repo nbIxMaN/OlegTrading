@@ -1,4 +1,4 @@
-package springboot.openApi.figi.classes;
+package springboot.openApiConnection.classes;
 
 /* JobResult Class */
 
@@ -9,5 +9,5 @@ import java.util.List;
 @Data
 public class JobResult {
     public String error;
-    public List<Figi> data;
+    public List<FullInstrumentDescription> data;
 }

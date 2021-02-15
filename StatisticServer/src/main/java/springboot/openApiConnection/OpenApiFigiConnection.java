@@ -2,7 +2,6 @@ package springboot.openApiConnection;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.core.type.TypeReference;
-import com.fasterxml.jackson.databind.ObjectMapper;
 import okhttp3.Call;
 import okhttp3.Callback;
 import okhttp3.HttpUrl;
@@ -17,11 +16,10 @@ import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Component;
-import ru.tinkoff.invest.openapi.model.rest.PortfolioResponse;
 import ru.tinkoff.invest.openapi.okhttp.BaseContextImpl;
-import springboot.openApi.figi.classes.Figi;
-import springboot.openApi.figi.classes.Job;
-import springboot.openApi.figi.classes.JobResult;
+import springboot.openApiConnection.classes.FullInstrumentDescription;
+import springboot.openApiConnection.classes.Job;
+import springboot.openApiConnection.classes.JobResult;
 
 import java.io.IOException;
 import java.util.ArrayList;
@@ -51,49 +49,49 @@ public class OpenApiFigiConnection extends BaseContextImpl {
         this.finalHttp = Objects.requireNonNull(HttpUrl.parse(figiOpenApiHost)).newBuilder().build();
     }
 
-    public CompletableFuture<List<Figi>> mapJobs(List<Job> jobs) throws IOException {
+    public CompletableFuture<List<FullInstrumentDescription>> mapJobs(List<Job> jobs) {
 
-        final CompletableFuture<List<Figi>> future = new CompletableFuture<>();
+        final CompletableFuture<List<FullInstrumentDescription>> future = new CompletableFuture<>();
 
-        final String postJsonData = mapper.writeValueAsString(jobs);
+        final String postJsonData;
 
-        final RequestBody requestBody = RequestBody.create(postJsonData, MediaType.parse("application/json"));
+        try {
 
-        final Request request = prepareRequest(finalHttp).
-                post(requestBody).
-                build();
+            postJsonData = mapper.writeValueAsString(jobs);
 
-//        Response response = okHttpClient.newCall(request).execute();
-//        String responseJson = Objects.requireNonNull(response.body()).string();
-//
-//        List<JobResult> jobResult = mapper.readValue(responseJson, figiTypeReference);
+            final RequestBody requestBody = RequestBody.create(postJsonData, MediaType.parse("application/json"));
 
-        okHttpClient.newCall(request).enqueue(
-                new Callback() {
-                    @Override
-                    public void onFailure(@NotNull Call call, @NotNull IOException e) {
-                        logger.error("При запросе к REST API произошла ошибка", e);
-                        future.completeExceptionally(e);
-                    }
+            final Request request = prepareRequest(finalHttp).
+                    post(requestBody).
+                    build();
 
-                    @Override
-                    public void onResponse(@NotNull Call call, @NotNull Response response) throws IOException {
-                        try {
-                            final List<JobResult> result = handleResponse(response, figiTypeReference);
-                            List<Figi> figis = new ArrayList<>();
-                            result.forEach(jobResult -> figis.addAll(jobResult.getData()));
-                            future.complete(figis);
-                        } catch (Exception ex) {
-                            future.completeExceptionally(ex);
+            okHttpClient.newCall(request).enqueue(
+                    new Callback() {
+                        @Override
+                        public void onFailure(@NotNull Call call, @NotNull IOException e) {
+                            logger.error("При запросе к REST API произошла ошибка", e);
+                            future.completeExceptionally(e);
+                        }
+
+                        @Override
+                        public void onResponse(@NotNull Call call, @NotNull Response response) throws IOException {
+                            try {
+                                final List<JobResult> result = handleResponse(response, figiTypeReference);
+                                List<FullInstrumentDescription> fullInstrumentDescriptions = new ArrayList<>();
+                                result.forEach(jobResult -> fullInstrumentDescriptions.addAll(jobResult.getData()));
+                                future.complete(fullInstrumentDescriptions);
+                            } catch (Exception ex) {
+                                future.completeExceptionally(ex);
+                            }
                         }
                     }
-                }
-        );
+            );
+        } catch (JsonProcessingException e) {
+            e.printStackTrace();
+            future.completeExceptionally(e);
+        }
 
         return future;
-//        String responseJson = Objects.requireNonNull(response.body()).string();
-//
-//        return response;
     }
 
     @NotNull
