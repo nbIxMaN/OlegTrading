@@ -1,24 +1,22 @@
 package springboot.controllers;
 
+import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
-import org.springframework.web.bind.annotation.RequestMapping;
 import ru.tinkoff.invest.openapi.model.rest.Operation;
 import ru.tinkoff.invest.openapi.model.rest.Operations;
 import ru.tinkoff.invest.openapi.model.rest.Portfolio;
+import springboot.classes.CalculationProfit;
 import springboot.logic.FigiToFullInstrumentDescriptionResolver;
 import springboot.logic.ProfitCalculator;
-import springboot.openApiConnection.classes.FullInstrumentDescription;
-import springboot.openApiConnection.classes.FigiIdType;
-import springboot.openApiConnection.classes.Job;
 import springboot.openApiConnection.OpenApiFigiConnection;
 import springboot.openApiConnection.OpenApiTinkoffConnection;
+import springboot.openApiConnection.classes.FullInstrumentDescription;
 
-import java.io.IOException;
 import java.time.OffsetDateTime;
 import java.util.Collections;
 import java.util.List;
-import java.util.concurrent.ExecutionException;
+import java.util.Map;
 
 @RestController
 public class HelloController {
@@ -51,7 +49,15 @@ public class HelloController {
             @RequestParam(name="begin", required=true) String begin,
             @RequestParam(name="end", required=true) String  end
     ) {
-        return profitCalculator.calculateProfit(OffsetDateTime.parse(begin), OffsetDateTime.parse(end));
+        return profitCalculator.getTradingOperations(OffsetDateTime.parse(begin), OffsetDateTime.parse(end));
+    }
+
+    @RequestMapping("/profit")
+    public List<CalculationProfit> profit(
+            @RequestParam(name="begin", required=true) String begin,
+            @RequestParam(name="end", required=true) String  end
+    ) {
+        return profitCalculator.calculateProfit(OffsetDateTime.parse(begin), OffsetDateTime.parse(end)).join();
     }
 
     @RequestMapping("/portfolio")
@@ -60,7 +66,7 @@ public class HelloController {
     }
 
     @RequestMapping("/figi")
-    public List<FullInstrumentDescription> figi() {
+    public Map<String, FullInstrumentDescription> figi() {
         return figiToFullInstrumentDescriptionResolver.getFullInstrumentDescriptionsByFigi(Collections.singletonList("BBG000BR2B91")).join();
     }
 

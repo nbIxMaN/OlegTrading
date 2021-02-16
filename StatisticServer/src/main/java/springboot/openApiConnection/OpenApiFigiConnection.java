@@ -26,6 +26,7 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Objects;
 import java.util.concurrent.CompletableFuture;
+import java.util.stream.Collectors;
 
 @Component
 public class OpenApiFigiConnection extends BaseContextImpl {
@@ -76,7 +77,10 @@ public class OpenApiFigiConnection extends BaseContextImpl {
                         @Override
                         public void onResponse(@NotNull Call call, @NotNull Response response) throws IOException {
                             try {
-                                final List<JobResult> result = handleResponse(response, figiTypeReference);
+                                final List<JobResult> result = handleResponse(response, figiTypeReference).
+                                        stream().
+                                        filter(jobResult -> Objects.isNull(jobResult.getError())).
+                                        collect(Collectors.toList());
                                 List<FullInstrumentDescription> fullInstrumentDescriptions = new ArrayList<>();
                                 result.forEach(jobResult -> fullInstrumentDescriptions.addAll(jobResult.getData()));
                                 future.complete(fullInstrumentDescriptions);

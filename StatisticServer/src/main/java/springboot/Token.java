@@ -5,7 +5,6 @@ import org.slf4j.LoggerFactory;
 import org.springframework.boot.SpringApplication;
 import org.springframework.boot.autoconfigure.SpringBootApplication;
 import org.springframework.context.annotation.Import;
-import org.springframework.context.annotation.ImportResource;
 import springboot.configuration.SpringConfiguration;
 
 @SpringBootApplication

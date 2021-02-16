@@ -11,6 +11,7 @@ import springboot.openApiConnection.classes.Job;
 
 import javax.annotation.PostConstruct;
 import java.util.ArrayList;
+import java.util.Collection;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -18,6 +19,7 @@ import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.CopyOnWriteArraySet;
 import java.util.concurrent.TimeUnit;
+import java.util.function.Function;
 import java.util.stream.Collectors;
 
 @Component
@@ -45,33 +47,33 @@ public class FigiToFullInstrumentDescriptionResolver {
                 map(aLong -> requestFullDescription());
     }
 
-    public CompletableFuture<List<FullInstrumentDescription>> getFullInstrumentDescriptionsByFigi(List<String> figis){
+    public CompletableFuture<Map<String, FullInstrumentDescription>> getFullInstrumentDescriptionsByFigi(Collection<String> figis){
 
-        final CompletableFuture<List<FullInstrumentDescription>> future = new CompletableFuture<>();
+        final CompletableFuture<Map<String, FullInstrumentDescription>> future = new CompletableFuture<>();
 
         Set<Job> jobs = getJobsSet(figis);
 
         if (!jobs.isEmpty()) {
             requestedFullInstrumentDescription.addAll(jobs);
             Disposable subscribe = observable.subscribe(isDone ->
-                    future.complete(getDescriptionList(figis)));
+                    future.complete(getDescriptionMap(figis)));
             future.thenAccept(fullInstrumentDescriptions -> subscribe.dispose());
         } else {
-            future.complete(getDescriptionList(figis));
+            future.complete(getDescriptionMap(figis));
         }
 
         return future;
 
     }
 
-    private List<FullInstrumentDescription> getDescriptionList(List<String> figis) {
+    private Map<String, FullInstrumentDescription> getDescriptionMap(Collection<String> figis) {
         return figis.stream().
                 filter(instrumentDescriptionMap::containsKey).
                 map(instrumentDescriptionMap::get).
-                collect(Collectors.toList());
+                collect(Collectors.toMap(FullInstrumentDescription::getFigi, Function.identity()));
     }
 
-    private Set<Job> getJobsSet(List<String> figis) {
+    private Set<Job> getJobsSet(Collection<String> figis) {
         return figis.stream().
                 filter(figi -> !instrumentDescriptionMap.containsKey(figi)).
                 map(figi -> Job.builder().

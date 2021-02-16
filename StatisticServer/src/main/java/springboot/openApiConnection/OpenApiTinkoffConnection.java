@@ -26,6 +26,8 @@ public class OpenApiTinkoffConnection implements AutoCloseable{
         this.openApi = openApi;
     }
 
+
+    //todo Сделать тут фьючер
     public Operations getOperations(OffsetDateTime begin, OffsetDateTime end) {
         UserAccount accounts = openApi.getUserContext().getAccounts().join().getAccounts().get(0);
         Operations operations = openApi.getOperationsContext().getOperations(
