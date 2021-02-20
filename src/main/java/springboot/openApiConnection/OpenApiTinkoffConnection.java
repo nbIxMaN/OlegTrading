@@ -39,6 +39,8 @@ public class OpenApiTinkoffConnection implements AutoCloseable{
         return operations;
     }
 
+
+    //todo Сделать тут нормально!
     public Portfolio getPortfolio() {
         UserAccount accounts = openApi.getUserContext().getAccounts().join().getAccounts().get(0);
         Portfolio portfolio = openApi.getPortfolioContext().getPortfolio(accounts.getBrokerAccountId()).join();

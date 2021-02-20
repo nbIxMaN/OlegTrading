@@ -8,12 +8,18 @@ import lombok.Data;
 import lombok.NoArgsConstructor;
 import lombok.ToString;
 
+import javax.persistence.Entity;
+import javax.persistence.Id;
+
 @Data
 @NoArgsConstructor
 @AllArgsConstructor
 @Builder
 @ToString
+@Entity
 public class FullInstrumentDescription {
+
+    @Id
     private String figi;
     private String securityType;
     private String marketSector;
