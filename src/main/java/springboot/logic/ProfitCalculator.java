@@ -8,8 +8,8 @@ import ru.tinkoff.invest.openapi.model.rest.OperationStatus;
 import ru.tinkoff.invest.openapi.model.rest.OperationTypeWithCommission;
 import springboot.classes.CalculationProfit;
 import springboot.classes.Profit;
+import springboot.database.connection.dao.InstrumentDescription;
 import springboot.openApiConnection.OpenApiTinkoffConnection;
-import springboot.openApiConnection.classes.FullInstrumentDescription;
 
 import java.math.BigDecimal;
 import java.time.OffsetDateTime;
@@ -55,7 +55,7 @@ public class ProfitCalculator {
         Map<String, List<Operation>> groupingOperations = tradingOperations.stream().
                 collect(Collectors.groupingBy(Operation::getFigi, Collectors.toList()));
 
-        CompletableFuture<Map<String, FullInstrumentDescription>> fullInstrumentDescriptionMapFuture =
+        CompletableFuture<Map<String, InstrumentDescription>> fullInstrumentDescriptionMapFuture =
                 figiToFullInstrumentDescriptionResolver.getFullInstrumentDescriptionsByFigi(groupingOperations.keySet());
 
         fullInstrumentDescriptionMapFuture.thenAccept(stringFullInstrumentDescriptionMap -> {
@@ -65,19 +65,19 @@ public class ProfitCalculator {
                             this.collectProfitByOperationCollection(entry.getValue()))
                     ).
                     map(entry -> {
-                        FullInstrumentDescription fullInstrumentDescription =
+                        InstrumentDescription instrumentDescription =
                                 stringFullInstrumentDescriptionMap.getOrDefault(
                                         entry.getKey(),
-                                        FullInstrumentDescription.builder().
+                                        InstrumentDescription.builder().
                                                 figi(entry.getKey()).
                                                 name("ERROR").
                                                 ticker("ERROR").
                                                 build()
                                 );
                         return CalculationProfit.builder().
-                                description(fullInstrumentDescription.getName()).
+                                description(instrumentDescription.getName()).
                                 figi(entry.getKey()).
-                                ticker(fullInstrumentDescription.getTicker()).
+                                ticker(instrumentDescription.getTicker()).
                                 profit(entry.getValue()).
                                 build();
                     }).

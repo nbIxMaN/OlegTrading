@@ -16,10 +16,8 @@ import javax.persistence.Id;
 @AllArgsConstructor
 @Builder
 @ToString
-@Entity
 public class FullInstrumentDescription {
 
-    @Id
     private String figi;
     private String securityType;
     private String marketSector;

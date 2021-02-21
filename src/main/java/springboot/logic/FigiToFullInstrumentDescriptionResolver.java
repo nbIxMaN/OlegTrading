@@ -5,10 +5,10 @@ import io.reactivex.rxjava3.disposables.Disposable;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Component;
-import springboot.database.connection.FullInstrumentDescriptionRepository;
+import springboot.database.connection.dao.InstrumentDescription;
+import springboot.database.connection.repositories.InstrumentDescriptionRepository;
 import springboot.openApiConnection.OpenApiFigiConnection;
 import springboot.openApiConnection.classes.FigiIdType;
-import springboot.openApiConnection.classes.FullInstrumentDescription;
 import springboot.openApiConnection.classes.Job;
 
 import javax.annotation.PostConstruct;
@@ -27,11 +27,11 @@ import java.util.stream.Collectors;
 @Component
 public class FigiToFullInstrumentDescriptionResolver {
 
-    private final Map<String, FullInstrumentDescription> instrumentDescriptionMap;
+    private final Map<String, InstrumentDescription> instrumentDescriptionMap;
     private final Set<Job> requestedFullInstrumentDescription;
 
     private final OpenApiFigiConnection openApiFigiConnection;
-    private final FullInstrumentDescriptionRepository fullInstrumentDescriptionRepository;
+    private final InstrumentDescriptionRepository instrumentDescriptionRepository;
 
     @Value("${figi.to.full.instrument.description.resolver.request.period:3}")
     private int requestFullDescriptionTimeOut;
@@ -39,9 +39,9 @@ public class FigiToFullInstrumentDescriptionResolver {
 
     @Autowired
     public FigiToFullInstrumentDescriptionResolver(OpenApiFigiConnection openApiFigiConnection,
-                                                   FullInstrumentDescriptionRepository fullInstrumentDescriptionRepository) {
+                                                   InstrumentDescriptionRepository instrumentDescriptionRepository) {
         this.openApiFigiConnection = openApiFigiConnection;
-        this.fullInstrumentDescriptionRepository = fullInstrumentDescriptionRepository;
+        this.instrumentDescriptionRepository = instrumentDescriptionRepository;
         //todo Сделать это красиво
         this.instrumentDescriptionMap = new ConcurrentHashMap<>(16, 0.75f, 1);
         this.requestedFullInstrumentDescription = new CopyOnWriteArraySet<>();
@@ -53,9 +53,9 @@ public class FigiToFullInstrumentDescriptionResolver {
                 map(aLong -> requestFullDescription());
     }
 
-    public CompletableFuture<Map<String, FullInstrumentDescription>> getFullInstrumentDescriptionsByFigi(Collection<String> figis){
+    public CompletableFuture<Map<String, InstrumentDescription>> getFullInstrumentDescriptionsByFigi(Collection<String> figis){
 
-        final CompletableFuture<Map<String, FullInstrumentDescription>> future = new CompletableFuture<>();
+        final CompletableFuture<Map<String, InstrumentDescription>> future = new CompletableFuture<>();
 
         addAvailableFigisFromDataBase(figis);
 
@@ -77,17 +77,17 @@ public class FigiToFullInstrumentDescriptionResolver {
     private void addAvailableFigisFromDataBase(Collection<String> figis) {
         figis.stream().
                 filter(figi -> !instrumentDescriptionMap.containsKey(figi)).
-                map(fullInstrumentDescriptionRepository::findById).
+                map(instrumentDescriptionRepository::findById).
                 forEach(optional -> optional.ifPresent(fullInstrumentDescription ->
                         instrumentDescriptionMap.put(fullInstrumentDescription.getFigi(), fullInstrumentDescription)
                 ));
     }
 
-    private Map<String, FullInstrumentDescription> getDescriptionMap(Collection<String> figis) {
+    private Map<String, InstrumentDescription> getDescriptionMap(Collection<String> figis) {
         return figis.stream().
                 filter(instrumentDescriptionMap::containsKey).
                 map(instrumentDescriptionMap::get).
-                collect(Collectors.toMap(FullInstrumentDescription::getFigi, Function.identity()));
+                collect(Collectors.toMap(InstrumentDescription::getFigi, Function.identity()));
     }
 
     private Set<Job> getJobsSet(Collection<String> figis) {
@@ -100,12 +100,19 @@ public class FigiToFullInstrumentDescriptionResolver {
                 collect(Collectors.toSet());
     }
 
+    //todo Что за join? убрать?
     private boolean requestFullDescription() {
         List<Job> requestedFullInstrumentDescriptionCopy = new ArrayList<>(requestedFullInstrumentDescription);
-        openApiFigiConnection.mapJobs(requestedFullInstrumentDescriptionCopy).join().
-                forEach(fullInstrumentDescription -> {
-                    instrumentDescriptionMap.put(fullInstrumentDescription.getFigi(), fullInstrumentDescription);
-                    fullInstrumentDescriptionRepository.save(fullInstrumentDescription);
+        openApiFigiConnection.mapJobs(requestedFullInstrumentDescriptionCopy).join().stream().
+                map(fullInstrumentDescription -> InstrumentDescription.builder().
+                        figi(fullInstrumentDescription.getFigi()).
+                        marketSelector(fullInstrumentDescription.getMarketSector()).
+                        name(fullInstrumentDescription.getName()).
+                        ticker(fullInstrumentDescription.getTicker()).
+                        build()).
+                forEach(instrumentDescription -> {
+                    instrumentDescriptionMap.put(instrumentDescription.getFigi(), instrumentDescription);
+                    instrumentDescriptionRepository.save(instrumentDescription);
                 });
         requestedFullInstrumentDescription.removeAll(requestedFullInstrumentDescriptionCopy);
         return true;

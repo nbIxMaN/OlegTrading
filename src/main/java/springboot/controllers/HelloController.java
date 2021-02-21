@@ -7,6 +7,7 @@ import ru.tinkoff.invest.openapi.model.rest.Operation;
 import ru.tinkoff.invest.openapi.model.rest.Operations;
 import ru.tinkoff.invest.openapi.model.rest.Portfolio;
 import springboot.classes.CalculationProfit;
+import springboot.database.connection.dao.InstrumentDescription;
 import springboot.logic.FigiToFullInstrumentDescriptionResolver;
 import springboot.logic.ProfitCalculator;
 import springboot.openApiConnection.OpenApiFigiConnection;
@@ -66,7 +67,7 @@ public class HelloController {
     }
 
     @RequestMapping("/figi")
-    public Map<String, FullInstrumentDescription> figi() {
+    public Map<String, InstrumentDescription> figi() {
         return figiToFullInstrumentDescriptionResolver.getFullInstrumentDescriptionsByFigi(Collections.singletonList("BBG000BR2B91")).join();
     }
 
