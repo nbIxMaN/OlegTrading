@@ -1,4 +1,4 @@
-package springboot.openApiConnection.classes;
+package springboot.openFigi.classes;
 
 /* Figi class */
 
@@ -7,9 +7,6 @@ import lombok.Builder;
 import lombok.Data;
 import lombok.NoArgsConstructor;
 import lombok.ToString;
-
-import javax.persistence.Entity;
-import javax.persistence.Id;
 
 @Data
 @NoArgsConstructor
