@@ -60,8 +60,10 @@ public class HelloController {
     }
 
     @RequestMapping("/figi")
-    public Collection<InstrumentDescription> figi() {
-        return figiDataSource.getInstrumentDescriptionsByFigi(Collections.singletonList("BBG000BR2B91"));
+    public Collection<InstrumentDescription> figi(
+            @RequestParam(name = "figi") String figi
+    ){
+        return figiDataSource.getInstrumentDescriptionsByFigi(Collections.singletonList(figi));
     }
 
 }

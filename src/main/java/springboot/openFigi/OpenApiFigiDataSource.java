@@ -3,6 +3,7 @@ package springboot.openFigi;
 import com.fasterxml.jackson.core.type.TypeReference;
 import io.reactivex.rxjava3.core.Observable;
 import io.reactivex.rxjava3.disposables.Disposable;
+import lombok.SneakyThrows;
 import okhttp3.HttpUrl;
 import okhttp3.MediaType;
 import okhttp3.OkHttpClient;
@@ -14,6 +15,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.context.annotation.Scope;
 import org.springframework.stereotype.Component;
 import ru.tinkoff.invest.openapi.exceptions.OpenApiException;
 import ru.tinkoff.invest.openapi.okhttp.BaseContextImpl;
@@ -30,25 +32,32 @@ import java.util.List;
 import java.util.Objects;
 import java.util.Set;
 import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.CopyOnWriteArrayList;
 import java.util.concurrent.CopyOnWriteArraySet;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
+import java.util.concurrent.Future;
+import java.util.concurrent.ThreadPoolExecutor;
 import java.util.concurrent.TimeUnit;
 import java.util.stream.Collectors;
 
 @Component
+@Scope("singleton")
 public class OpenApiFigiDataSource extends BaseContextImpl implements InstrumentDescriptionDataSource {
 
     private static final TypeReference<List<JobResult>> figiTypeReference =
             new TypeReference<List<JobResult>>() {};
 
-    private Logger logger = LoggerFactory.getLogger(OpenApiFigiDataSource.class);
+    private final Logger logger = LoggerFactory.getLogger(OpenApiFigiDataSource.class);
 
     private final OkHttpClient okHttpClient;
     private final HttpUrl finalHttp;
 
     @Value("${figi.to.full.instrument.description.resolver.request.period:3}")
     private int requestFullDescriptionTimeOut;
-    private final Observable<Collection<FullInstrumentDescription>> observable;
+    private final List<CompletableFuture<Collection<InstrumentDescription>>> futures;
     private final Set<String> requestedFullInstrumentDescription;
+    private final ExecutorService executorService;
 
     @Autowired
     public OpenApiFigiDataSource(
@@ -59,8 +68,18 @@ public class OpenApiFigiDataSource extends BaseContextImpl implements Instrument
         this.okHttpClient = okHttpClient;
         this.finalHttp = Objects.requireNonNull(HttpUrl.parse(figiOpenApiHost)).newBuilder().build();
         this.requestedFullInstrumentDescription = new CopyOnWriteArraySet<>();
-        this.observable = Observable.interval(requestFullDescriptionTimeOut, TimeUnit.SECONDS).
-                map(aLong -> requestInstrumentDescription());
+        this.futures = new CopyOnWriteArrayList<>();
+        this.executorService = Executors.newSingleThreadExecutor();
+        this.executorService.execute(() -> {
+            while (!Thread.interrupted()) {
+                try {
+                    TimeUnit.SECONDS.sleep(requestFullDescriptionTimeOut);
+                    requestInstrumentDescription();
+                } catch (InterruptedException e) {
+                    logger.info("RequestFigiThread was interrupted");
+                }
+            }
+        });
     }
 
     @Override
@@ -75,29 +94,32 @@ public class OpenApiFigiDataSource extends BaseContextImpl implements Instrument
 
     private CompletableFuture<Collection<InstrumentDescription>> getInstrumentDescriptions(Collection<String> figis) {
         CompletableFuture<Collection<InstrumentDescription>> future = new CompletableFuture<>();
+        futures.add(future);
         requestedFullInstrumentDescription.addAll(figis);
-        Disposable subscribe = observable.subscribe(fullInstrumentDescriptions -> {
-                Collection<InstrumentDescription> instrumentDescriptions = fullInstrumentDescriptions.stream().
-                        filter(fullInstrumentDescription -> figis.contains(fullInstrumentDescription.getFigi())).
-                        map(this::getInstrumentDescriptionSet).
-                        collect(Collectors.toSet());
-                future.complete(instrumentDescriptions);
-                });
-        future.thenAccept(fullInstrumentDescriptions -> subscribe.dispose());
-        return future;
+        return future.thenCompose(instrumentDescriptions ->
+                CompletableFuture.supplyAsync(() ->
+                        instrumentDescriptions.stream().filter(
+                                instrumentDescription -> figis.contains(instrumentDescription.getFigi())).
+                                collect(Collectors.toSet()))
+
+        );
     }
 
-    private Collection<FullInstrumentDescription> requestInstrumentDescription() {
-        Collection<FullInstrumentDescription> instrumentDescriptions = new ArrayList<>();
+    private void requestInstrumentDescription() {
+        logger.info("requestInstrumentDescription in parallel stream");
+        Collection<InstrumentDescription> instrumentDescriptions = new ArrayList<>();
+        Set<Job> jobs = getJobsSet(requestedFullInstrumentDescription);
         if (!requestedFullInstrumentDescription.isEmpty()) {
+            logger.info("requestedFullInstrumentDescription is not empty" + requestedFullInstrumentDescription);
             try {
-                instrumentDescriptions.addAll(requestInstrumentDescription(getJobsSet(requestedFullInstrumentDescription)));
+                Collection<FullInstrumentDescription> fullInstrumentDescriptions = requestInstrumentDescription(jobs);
+                instrumentDescriptions.addAll(getInstrumentDescriptionSet(fullInstrumentDescriptions));
             } catch (Exception e) {
                 logger.error("Error when executing a request to OPENAPI " + e.getMessage());
             }
             requestedFullInstrumentDescription.clear();
         }
-        return instrumentDescriptions;
+        futures.forEach(futures -> futures.complete(instrumentDescriptions));
     }
 
     private Collection<FullInstrumentDescription> requestInstrumentDescription(Collection<Job> jobs) throws IOException, OpenApiException {
@@ -131,13 +153,15 @@ public class OpenApiFigiDataSource extends BaseContextImpl implements Instrument
                 collect(Collectors.toSet());
     }
 
-    private InstrumentDescription getInstrumentDescriptionSet(FullInstrumentDescription description) {
-        return InstrumentDescription.builder().
-                figi(description.getFigi()).
-                marketSelector(description.getMarketSector()).
-                name(description.getName()).
-                ticker(description.getTicker()).
-                build();
+    private Set<InstrumentDescription> getInstrumentDescriptionSet(Collection<FullInstrumentDescription> description) {
+        return description.stream().
+                map(fullInstrumentDescription -> InstrumentDescription.builder().
+                        figi(fullInstrumentDescription.getFigi()).
+                        marketSelector(fullInstrumentDescription.getMarketSector()).
+                        name(fullInstrumentDescription.getName()).
+                        ticker(fullInstrumentDescription.getTicker()).
+                        build()).
+                collect(Collectors.toSet());
     }
 
     @NotNull
